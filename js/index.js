@@ -2,7 +2,8 @@ const $$ = document.querySelector.bind(document);
 const $$$ = document.querySelectorAll.bind(document);
 
 // DOM element 
-const btnThem = $$('#btnThem');
+const btnThemTbl = $$('#btnThem');
+const headerTitle = $$('#header-title');
 const tableDanhSach = $$('#tableDanhSach');
 const danhSachThongbao = $$$('.sp-thongbao');
 const searchName = $$('#searchName');
@@ -19,7 +20,7 @@ const chucVu = $$('#chucVu');
 const gioLam = $$('#gioLam');
 
 // DOM element Modal buttons
-const btnThemNV = $$('#btnThemNV');
+const btnThemMod = $$('#btnThemNV');
 const btnCapNhat = $$('#btnCapNhat');
 const btnDong = $$('#btnDong');
 
@@ -38,6 +39,12 @@ const app = {
                     donVi: 'ký tự',
                     toiThieu: 4,
                     toiDa: 6
+                }
+            },
+            {
+                ten: 'trungNoiDung',
+                tuyChon: {
+                    tenThuocTinh: 'taiKhoan'
                 }
             }
         ],
@@ -120,9 +127,12 @@ const app = {
         ],
     },
 
+    // Trạng thái
+    dangCapNhat: false,
+
     // Render Table danh sách nhân viên
-    renderTable: function (ele) {
-        const array = ele.map(function (user, index) {
+    renderTable: function (list) {
+        const array = list.map(function (user, index) {
             return `
             <tr>
                 <td>${user.taiKhoan}</td>
@@ -172,18 +182,6 @@ const app = {
         return user;
     },
 
-    hienThiUser: function (indexUser) {
-        const user = this.danhSachUsers[indexUser];
-
-        Object.keys(user).forEach(function (key, index) {
-            if (key !== 'tongLuong' && key !== 'loaiNhanVien') {
-                const mang = Array.from(danhSachInput);
-
-                mang[index].value = user[key];
-            }
-        });
-    },
-
     themThuocTinhUser: function () {
         this.User.prototype.tinhTongLuong = this.tinhTongLuong;
         this.User.prototype.xepLoaiNhanVien = this.xepLoaiNhanVien;
@@ -219,8 +217,10 @@ const app = {
         }
     },
 
-    // Tạo danhSachHopLe: danh sách cờ hiệu cho tính hợp lệ của từng ô input
-    // const danhSachHopLe = [false, false, false,...]
+    /**
+     * Tạo danhSachHopLe: danh sách cờ hiệu cho tính hợp lệ của từng ô input
+     * const danhSachHopLe = [false, false, false,...]
+     */
     taoDanhSachHopLe: function () {
         const mang = Array.from(danhSachInput);
 
@@ -235,13 +235,12 @@ const app = {
      */
     kiemTraForm: function () {
         const mangInputs = Array.from(danhSachInput);
-        const mangHopLe = Array.from(this.danhSachHopLe);
 
         mangInputs.forEach(function (input) {
             input.onblur();
         });
 
-        return mangHopLe.every(function (hopLe) {
+        return this.danhSachHopLe.every(function (hopLe) {
             return hopLe;
         });
     },
@@ -252,15 +251,19 @@ const app = {
      * @return {undefined | string} undefined (nếu input hợp lệ) || thông báo lỗi (nếu input không hợp lệ)
      */
     kiemTraInput: function (input) {
-        const _this = this;
         const danhSachLuat = this.danhSachKiemTra[input.id];
+
+        // Nếu input bị disabled thì luôn hợp lệ
+        if (input.disabled) {
+            return undefined;
+        }
 
         // Lọc qua tất cả luật của từng input trong danhSachKiemTra, 
         // nếu chỉ 1 luật không hợp lệ, trả về luật đó
-        const luatKhongHopLe = danhSachLuat.find(function (luat) {
-            const thongBaoLoi = _this[luat.ten](input.value, luat.tuyChon);
+        const luatKhongHopLe = danhSachLuat.find((luat) => {
+            const thongBaoLoi = this[luat.ten](input.value, luat.tuyChon);
 
-            return thongBaoLoi ? true : false;
+            return thongBaoLoi;
         });
 
         if (luatKhongHopLe) {
@@ -278,7 +281,7 @@ const app = {
 
     // 1. Luật nội dung không được để trống 
     noiDungBatBuoc: function (noiDung, tuyChon) {
-        if (noiDung === '') {
+        if (noiDung.trim() === '') {
             return 'Vui lòng nhập nội dung';
         }
     },
@@ -312,32 +315,16 @@ const app = {
         const pattern = /^([a-z]+)((\s{1}[a-z]+){1,})$/;
         const dinhDang = 'không chứa số và ký tự, không khoảng trống đầu và cuối nội dung, tối đa một khoảng trống giữa các chữ';
 
-        function toSlug(title) {
-            //Đổi chữ hoa thành chữ thường
-            slug = title.toLowerCase();
-
-            //Đổi ký tự có dấu thành không dấu
-            slug = slug.replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a');
-            slug = slug.replace(/é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ/gi, 'e');
-            slug = slug.replace(/i|í|ì|ỉ|ĩ|ị/gi, 'i');
-            slug = slug.replace(/ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ/gi, 'o');
-            slug = slug.replace(/ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự/gi, 'u');
-            slug = slug.replace(/ý|ỳ|ỷ|ỹ|ỵ/gi, 'y');
-            slug = slug.replace(/đ/gi, 'd');
-
-            return slug;
-        }
-
-        if (!toSlug(noiDung).match(pattern)) {
+        if (!pattern.test(this.toSlug(noiDung))) {
             return `Vui lòng nhập đúng họ và tên <i style="font-size: 0.8em;">(${dinhDang})</i>`;
         }
     },
 
-    // 4. Luật nội dung phải là email
+    // 4. Luật nội dung phải là số
     duLieuSo: function (noiDung, tuyChon) {
         const pattern = /^[0-9]*$/;
 
-        if (!noiDung.match(pattern)) {
+        if (!pattern.test(noiDung)) {
             return `Vui lòng nhập số`;
         }
     },
@@ -346,7 +333,7 @@ const app = {
     duLieuEmail: function (noiDung, tuyChon) {
         const pattern = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,4}$/;
 
-        if (!noiDung.match(pattern)) {
+        if (!pattern.test(noiDung)) {
             return `Vui lòng nhập đúng email`;
         }
     },
@@ -356,7 +343,7 @@ const app = {
         const pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])/;
         const dinhDang = 'chứa ít nhất 1 ký tự thường, 1 ký tự hoa, 1 ký tự số, 1 ký tự đặc biệt gồm ! @ # $ % ^ & *';
 
-        if (!noiDung.match(pattern)) {
+        if (!pattern.test(noiDung)) {
             return `Vui lòng nhập đúng mật khẩu <i style="font-size: 0.8em;">(${dinhDang})</i>`;
         }
     },
@@ -366,16 +353,92 @@ const app = {
         const pattern = /^(0[1-9]|1[012])[\/\-](0[1-9]|[12][0-9]|3[01])[\/\-]\d{4}$/;
         const dinhDang = 'mm/dd/yyyy';
 
-        if (!noiDung.match(pattern)) {
+        if (!pattern.test(noiDung)) {
             return `Vui lòng nhập đúng tháng/ngày/năm <i style="font-size: 0.8em;">(${dinhDang})</i>`;
         }
     },
 
-    // =========================================================================
+    // 8. Luật nội dung không được trùng lặp
+    trungNoiDung: function (noiDung, tuyChon) {
+        const noiDungSoSanh = tuyChon.tenThuocTinh;
+
+        const trungLap = this.danhSachUsers.some(function (user) {
+            return user[noiDungSoSanh] === noiDung;
+        });
+
+        if (trungLap) {
+            return `Vui lòng nhập lại do nội dung này bị trùng lặp`;
+        }
+    },
+
+    // =============================================================================
 
     // Lắng nghe và xử lý các sự kiện (DOM event)
     handleEvents: function () {
         const _this = this;
+
+        // Xử lý khi nhấn nút thêm nhân viên 
+        btnThemTbl.onclick = function () {
+            if (_this.dangCapNhat) {
+                tknv.setAttribute('disabled', '');
+                btnCapNhat.style.display = 'block';
+                btnThemMod.style.display = 'none';
+                headerTitle.innerHTML = 'Cập nhật nhân viên';
+            } else {
+                _this.resetForm();
+                tknv.removeAttribute('disabled', '');
+                btnCapNhat.style.display = 'none';
+                btnThemMod.style.display = 'block';
+                headerTitle.innerHTML = 'Thêm nhân viên';
+            }
+
+            _this.dangCapNhat = false;
+        };
+
+        // ============ Search ============
+
+        // Xử lý khi nhập input tìm kiếm
+        searchName.oninput = function () {
+            const danhSachKetQua = _this.danhSachUsers.reduce(function (acc, user) {
+
+                if (_this.toSlug(user.loaiNhanVien, true).search(_this.toSlug(searchName.value, true)) !== -1) {
+                    acc.push(user);
+                    return acc;
+                }
+                return acc;
+            }, []);
+
+            _this.renderTable(danhSachKetQua);
+        };
+
+        // ============ Table ============
+
+        // Xử lý khi nhấn các nút
+        tableDanhSach.onclick = function (e) {
+            // Xử lý khi nhấn nút xóa
+            const nutXoa = e.target.matches('.table-remove-btn');
+
+            if (nutXoa) {
+                const index = e.target.getAttribute('data-index');
+
+                _this.danhSachUsers.splice(index, 1);
+                _this.renderTable(_this.danhSachUsers);
+            }
+
+            // Xử lý khi nhấn nút cập nhật
+            const nutCapNhat = e.target.matches('.table-update-btn');
+
+            if (nutCapNhat) {
+                const indexUser = e.target.getAttribute('data-index');
+                const userDuocChon = _this.danhSachUsers[indexUser];
+
+                _this.dangCapNhat = true;
+                _this.userVaInputs(userDuocChon, 'inputs');
+                btnThem.click();
+            }
+        };
+
+        // ============ Modal ============
 
         // Xử lý khi blur khỏi input
         danhSachInput.forEach(function (input, index) {
@@ -395,7 +458,7 @@ const app = {
             };
         });
 
-        // Xử lý khi nhập inputs trong Modal
+        // Xử lý khi nhập input
         danhSachInput.forEach(function (input) {
             input.oninput = function () {
                 const spanNode = input.closest('.form-group').querySelector('.sp-thongbao');
@@ -406,7 +469,7 @@ const app = {
         });
 
         // Xử lý khi nhấn nút thêm người dùng
-        btnThemNV.onclick = function () {
+        btnThemMod.onclick = function () {
             const user = _this.taoUser();
 
             if (_this.kiemTraForm()) {
@@ -415,66 +478,66 @@ const app = {
             }
         };
 
-        // Xử lý khi nhấn các nút trong Table
-        tableDanhSach.onclick = function (e) {
-            // Xử lý khi nhấn nút xóa
-            const nutXoa = e.target.matches('.table-remove-btn');
-
-            if (nutXoa) {
-                const index = e.target.getAttribute('data-index');
-
-                _this.danhSachUsers.splice(index, 1);
-                _this.renderTable(_this.danhSachUsers);
-            }
-
-            // Xử lý khi nhấn nút cập nhật
-            const nutCapNhat = e.target.matches('.table-update-btn');
-
-            if (nutCapNhat) {
-                const indexUser = e.target.getAttribute('data-index');
-
-                _this.hienThiUser(indexUser);
-                btnThem.click();
-                _this.kiemTraForm();
-            }
-        };
-
-        // Xử lý khi nhấn nút cập nhật trong Modal
+        // Xử lý khi nhấn nút cập nhật
         btnCapNhat.onclick = function () {
+            const hopLe = _this.kiemTraForm();
 
-            if (_this.kiemTraForm()) {
-                _this.danhSachUsers.push(user);
+            if (hopLe) {
+                const userHienTai = _this.danhSachUsers.find(function (user) {
+                    return user.taiKhoan === tknv.value;
+                });
+
+                _this.userVaInputs(userHienTai, 'user');
                 _this.renderTable(_this.danhSachUsers);
             }
         };
 
-        // Xử lý khi nhạp input tìm kiếm
-        searchName.oninput = function () {
-            const danhSachKetQua = _this.danhSachUsers.reduce(function (acc, user) {
-                console.log(user);
-                console.log(toSlug(user.loaiNhanVien));
-                console.log(toSlug(searchName.value));
-                if (toSlug(user.loaiNhanVien).search(toSlug(searchName.value)) !== -1) {
-                    acc.push(user);
-                    return acc;
+        // Xử lý khi chọn ngày trong lịch
+        datepicker.onchange = function () {
+            datepicker.onblur();
+        };
+    },
+
+    /**
+     * Hàm lấy thông tin user đưa vào các inputs hay ngược lại
+     * @param {string} ganVo 'user' khi gán giá trị các inputs vô user, 'inputs' khi hiển thị các giá trị user lên các inputs
+     */
+    userVaInputs: function (user, ganVo) {
+        const mang = Array.from(danhSachInput);
+
+        Object.keys(user).forEach(function (key, index) {
+            if (key !== 'tongLuong' && key !== 'loaiNhanVien') {
+                switch (ganVo) {
+                    case 'user':
+                        user[key] = mang[index].value;
+                        break;
+                    case 'inputs':
+                        mang[index].value = user[key];
+                        break;
                 }
-                return acc;
-            }, []);
-            console.log(danhSachKetQua);
-            _this.renderTable(danhSachKetQua);
+            }
+        });
+    },
 
-            function toSlug(title) {
-                //Đổi chữ hoa thành chữ thường
-                slug = title.toLowerCase();
+    /**
+     * Xóa nội dung tất cả inputs và ẩn tất cả thông báo lỗi
+     */
+    resetForm: function () {
+        const user = new this.User('', '', '', '', '', '', '', '');
+        const mang = Array.from(danhSachThongbao);
 
-                //Đổi ký tự có dấu thành không dấu
-                slug = slug.replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a');
-                slug = slug.replace(/é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ/gi, 'e');
-                slug = slug.replace(/i|í|ì|ỉ|ĩ|ị/gi, 'i');
-                slug = slug.replace(/ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ/gi, 'o');
-                slug = slug.replace(/ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự/gi, 'u');
-                slug = slug.replace(/ý|ỳ|ỷ|ỹ|ỵ/gi, 'y');
-                slug = slug.replace(/đ/gi, 'd');
+        this.userVaInputs(user, 'inputs');
+        mang.forEach(function (thongBao) {
+            thongBao.style.display = 'none';
+        });
+    },
+
+    toSlug: function (string, optional) {
+        //Đổi chữ hoa thành chữ thường
+        slug = string.toLowerCase();
+
+        switch (optional) {
+            case true:
                 //Xóa các ký tự đặt biệt
                 slug = slug.replace(/\`|\~|\!|\@|\#|\||\$|\%|\^|\&|\*|\(|\)|\+|\=|\,|\.|\/|\?|\>|\<|\'|\"|\:|\;|_/gi, '');
                 //Đổi khoảng trắng thành ký tự gạch ngang
@@ -488,14 +551,22 @@ const app = {
                 //Xóa các ký tự gạch ngang ở đầu và cuối
                 slug = '@' + slug + '@';
                 slug = slug.replace(/\@\-|\-\@|\@/gi, '');
-                return slug;
-            }
-        };
+            default:
+                //Đổi ký tự có dấu thành không dấu
+                slug = slug.replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a');
+                slug = slug.replace(/é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ/gi, 'e');
+                slug = slug.replace(/i|í|ì|ỉ|ĩ|ị/gi, 'i');
+                slug = slug.replace(/ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ/gi, 'o');
+                slug = slug.replace(/ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự/gi, 'u');
+                slug = slug.replace(/ý|ỳ|ỷ|ỹ|ỵ/gi, 'y');
+                slug = slug.replace(/đ/gi, 'd');
+        }
+
+        return slug;
     },
 
     // Hàm bắt đầu chạy app
     start: function () {
-
         // Thêm thuộc tính hàm khởi tạo
         this.themThuocTinhUser();
 
@@ -507,31 +578,7 @@ const app = {
 
         // Render Table danh sách nhân viên
         this.renderTable(this.danhSachUsers);
-
-        const user1 = new this.User('1', 'hoTen', 'email', 'matKhau', 'ngayLam', 'luongCB', 'chucVu', 'gioLam');
-        const user2 = new this.User('1112', 'Trần Văn A', 'van@gmail.com', '1A2r%ddđ', '10/08/2021', 10e6, 'Trưởng phòng', 190);
-        const user3 = new this.User('1113', 'Nguyen Thi Lai', 'lai@gmail.com', '1A2r%ddđ', '06/12/2021', 20e6, 'Sếp', 160);
-        this.danhSachUsers.push(user1, user2, user3);
-        this.renderTable(this.danhSachUsers);
     }
 };
 
 app.start();
-
-
-/**CAU HOI
- * 1. tong luong = luongCB * ngay lam * he so luong
- * 2. cap nhat theo tai khoan nhan vien ?
- * regex
- * 3. ho va ten input nhap it nhat 1 tu hay 2 tu?
- * 4. regex email chuẩn
- * 5. mật khẩu không được để dấu hay trọng âm
- * =>trang nào đưa regex chuẩn
- */
-
-//
-// 
-/**TOI UU
- * 1. khi nhan nut them nguoi dung co the bo viec focus() va blur() neu bo libary datapicker 
- * 2. không hard code font-size <i></i> trong kiem tra input, thay css
- */
