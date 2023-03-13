@@ -5,8 +5,9 @@ const $$$ = document.querySelectorAll.bind(document);
 const btnThemTbl = $$('#btnThem');
 const headerTitle = $$('#header-title');
 const tableDanhSach = $$('#tableDanhSach');
-const danhSachThongbao = $$$('.sp-thongbao');
 const searchName = $$('#searchName');
+const myModal = $$('#myModal');
+const danhSachThongbao = $$$('.sp-thongbao');
 
 // DOM element Modal inputs
 const danhSachInput = $$$('.input-ele');
@@ -27,7 +28,10 @@ const btnDong = $$('#btnDong');
 const app = {
 
     // Dữ liệu
+
     danhSachUsers: [],
+
+    // Chứa các inputs, mỗi input chứa mảng gồm các luật kiểm tra nội dung của input đó
     danhSachKiemTra: {
         tknv: [
             {
@@ -163,8 +167,8 @@ const app = {
         this.luongCoBan = luongCoBan;
         this.chucVu = chucVu;
         this.gioLam = gioLam;
-        this.tongLuong = this.tinhTongLuong(chucVu, luongCoBan);
-        this.loaiNhanVien = this.xepLoaiNhanVien(gioLam);
+        this.tongLuong = this.tinhTongLuong(this.chucVu, this.luongCoBan);
+        this.loaiNhanVien = this.xepLoaiNhanVien(this.gioLam);
     },
 
     // Chức năng liên quan đến Hàm khởi tạo
@@ -175,9 +179,9 @@ const app = {
             email.value,
             password.value,
             datepicker.value,
-            +luongCB.value,
+            luongCB.value,
             chucVu.value,
-            +gioLam.value
+            gioLam.value
         );
         return user;
     },
@@ -191,14 +195,14 @@ const app = {
         let tongLuong;
 
         switch (chucVu) {
-            case 'Sếp':
-                tongLuong = luongCB * 3;
+            case 'Giám đốc':
+                tongLuong = +luongCB * 3;
                 break;
             case 'Trưởng phòng':
-                tongLuong = luongCB * 2;
+                tongLuong = +luongCB * 2;
                 break;
             case 'Nhân viên':
-                tongLuong = luongCB;
+                tongLuong = +luongCB;
                 break;
         }
 
@@ -206,11 +210,11 @@ const app = {
     },
 
     xepLoaiNhanVien: function (gioLam) {
-        if (gioLam >= 192) {
+        if (+gioLam >= 192) {
             return 'Nhân viên xuất sắc';
-        } else if (gioLam >= 176) {
+        } else if (+gioLam >= 176) {
             return 'Nhân viên giỏi';
-        } else if (gioLam >= 160) {
+        } else if (+gioLam >= 160) {
             return 'Nhân viên khá';
         } else {
             return 'Nhân viên trung bình';
@@ -222,9 +226,9 @@ const app = {
      * const danhSachHopLe = [false, false, false,...]
      */
     taoDanhSachHopLe: function () {
-        const mang = Array.from(danhSachInput);
+        const mangInputs = Array.from(danhSachInput);
 
-        this.danhSachHopLe = mang.map(function () {
+        this.danhSachHopLe = mangInputs.map(function () {
             return false;
         });
     },
@@ -302,7 +306,6 @@ const app = {
                 if (noiDung < tuyChon.toiThieu || noiDung > tuyChon.toiDa) {
                     hopLe = false;
                 }
-                break;
         }
 
         if (!hopLe) {
@@ -400,7 +403,6 @@ const app = {
         // Xử lý khi nhập input tìm kiếm
         searchName.oninput = function () {
             const danhSachKetQua = _this.danhSachUsers.reduce(function (acc, user) {
-
                 if (_this.toSlug(user.loaiNhanVien, true).search(_this.toSlug(searchName.value, true)) !== -1) {
                     acc.push(user);
                     return acc;
@@ -415,6 +417,7 @@ const app = {
 
         // Xử lý khi nhấn các nút
         tableDanhSach.onclick = function (e) {
+
             // Xử lý khi nhấn nút xóa
             const nutXoa = e.target.matches('.table-remove-btn');
 
@@ -470,9 +473,9 @@ const app = {
 
         // Xử lý khi nhấn nút thêm người dùng
         btnThemMod.onclick = function () {
-            const user = _this.taoUser();
-
             if (_this.kiemTraForm()) {
+                const user = _this.taoUser();
+
                 _this.danhSachUsers.push(user);
                 _this.renderTable(_this.danhSachUsers);
             }
@@ -489,12 +492,25 @@ const app = {
 
                 _this.userVaInputs(userHienTai, 'user');
                 _this.renderTable(_this.danhSachUsers);
+                btnDong.click();
             }
         };
 
         // Xử lý khi chọn ngày trong lịch
         datepicker.onchange = function () {
             datepicker.onblur();
+        };
+
+        // Xử lý khi nhấn nút đóng
+        btnDong.onclick = function (e) {
+            _this.resetForm();
+        };
+
+        // Xử lý khi nhấn overlay Modal
+        myModal.onmousedown = function (e) {
+            if (!e.target.closest('.modal-content')) {
+                _this.resetForm();
+            }
         };
     },
 
@@ -506,7 +522,11 @@ const app = {
         const mang = Array.from(danhSachInput);
 
         Object.keys(user).forEach(function (key, index) {
-            if (key !== 'tongLuong' && key !== 'loaiNhanVien') {
+            if (key === 'tongLuong') {
+                user.tongLuong = user.tinhTongLuong(user.chucVu, user.luongCoBan);
+            } else if (key === 'loaiNhanVien') {
+                user.loaiNhanVien = user.xepLoaiNhanVien(user.gioLam);
+            } else {
                 switch (ganVo) {
                     case 'user':
                         user[key] = mang[index].value;
